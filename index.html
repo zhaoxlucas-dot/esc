@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>密码学密室 · Cipher Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+SC:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0e14;
+      --panel: #121820;
+      --border: #1e2a3a;
+      --text: #c8d0dc;
+      --muted: #6b7a90;
+      --accent: #3dd68c;
+      --accent-dim: #2a9d62;
+      --warn: #e8b84a;
+      --danger: #e05d5d;
+      --glow: rgba(61, 214, 140, 0.15);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Noto Sans SC", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .noise {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.04;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      z-index: 0;
+    }
+
+    #app {
+      position: relative;
+      z-index: 1;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    h1 {
+      font-size: clamp(1.5rem, 4vw, 2rem);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      margin: 0 0 0.5rem;
+      background: linear-gradient(135deg, var(--text) 0%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+      box-shadow: 0 0 0 1px var(--glow), 0 24px 48px rgba(0, 0, 0, 0.35);
+    }
+
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--accent);
+      margin: 0 0 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .card h2 .badge {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      background: var(--border);
+      color: var(--muted);
+    }
+
+    .cipher-block {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.95rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 0.75rem 0;
+      word-break: break-all;
+      color: var(--warn);
+    }
+
+    .hint {
+      font-size: 0.85rem;
+      color: var(--muted);
+      border-left: 3px solid var(--accent-dim);
+      padding-left: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .hint strong {
+      color: var(--warn);
+    }
+
+    label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 1rem;
+      padding: 0.65rem 0.9rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--glow);
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: flex-end;
+      margin-top: 1rem;
+    }
+
+    .row > div {
+      flex: 1;
+      min-width: 160px;
+    }
+
+    button {
+      font-family: "Noto Sans SC", sans-serif;
+      font-weight: 600;
+      font-size: 0.95rem;
+      padding: 0.65rem 1.25rem;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.15s, filter 0.15s;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #051208;
+    }
+
+    .btn-primary:hover {
+      filter: brightness(1.08);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover {
+      color: var(--text);
+      border-color: var(--muted);
+    }
+
+    .msg {
+      margin-top: 0.75rem;
+      font-size: 0.9rem;
+      min-height: 1.4em;
+    }
+
+    .msg.err {
+      color: var(--danger);
+    }
+
+    .msg.ok {
+      color: var(--accent);
+    }
+
+    .locked {
+      opacity: 0.45;
+      pointer-events: none;
+      filter: grayscale(0.3);
+    }
+
+    .locked .lock-note {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+    }
+
+    .stage-banner {
+      margin: 2rem 0 1rem;
+      padding-bottom: 0.6rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .stage-banner:first-of-type {
+      margin-top: 0;
+    }
+
+    .stage-banner h2 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin: 0;
+    }
+
+    .stage-banner p {
+      margin: 0.4rem 0 0;
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+
+    .card.gate h2 .badge {
+      background: rgba(61, 214, 140, 0.12);
+      color: var(--accent);
+    }
+
+    #intro .card {
+      text-align: center;
+    }
+
+    #intro p {
+      color: var(--muted);
+      margin: 0 0 1.25rem;
+    }
+
+    #victory {
+      display: none;
+      text-align: center;
+    }
+
+    #victory.visible {
+      display: block;
+    }
+
+    #victory h2 {
+      font-size: 1.5rem;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+
+    #game.hidden {
+      display: none;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 2rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="noise" aria-hidden="true"></div>
+  <div id="app">
+    <header>
+      <h1>密码学密室</h1>
+      <p class="subtitle">Cipher Lab — 三关递进：每关 4 道题 + 关底通行串</p>
+    </header>
+
+    <section id="intro">
+      <div class="card">
+        <p>
+          安全屋分为<strong style="color: var(--text)">第一关、第二关、第三关</strong>。每一关各有四道独立谜题；全部解开后，需把本关四个英文口令<strong>按顺序、小写、无空格</strong>拼成「关底通行串」才能进入下一关。第三关关底即为最终出口。
+        </p>
+        <button type="button" class="btn-primary" id="startBtn">进入密室</button>
+      </div>
+    </section>
+
+    <section id="game" class="hidden">
+      <div class="stage-banner">
+        <h2>第一关 · 入门编码</h2>
+        <p>ROT13、十六进制 ASCII、摩斯、Base64。解完四题后拼接本关通行串进入第二关。</p>
+      </div>
+
+      <div class="card" data-room="0">
+        <h2>第一关 ① <span class="badge">ROT13</span></h2>
+        <p>门上的显示屏闪烁着一串字母——像是某种「对称」替换……</p>
+        <div class="cipher-block" id="c0">PBQR</div>
+        <div class="row">
+          <div>
+            <label for="a0">口令（还原后的单词）</label>
+            <input type="text" id="a0" autocomplete="off" spellcheck="false" placeholder="四个字母" />
+          </div>
+          <button type="button" class="btn-primary" data-submit="0">解锁</button>
+        </div>
+        <p class="msg" id="m0"></p>
+        <details class="hint">
+          <summary>提示</summary>
+          <p><strong>ROT13</strong>：拉丁字母表上，每个字母向前或向后移动 13 位，A↔N、B↔O……移动两次会回到原文。试着对密文做一次 ROT13。</p>
+        </details>
+      </div>
+
+      <div class="card locked" data-room="1">
+        <p class="lock-note">🔒 请先解开上一题</p>
+        <h2>第一关 ② <span class="badge">十六进制</span></h2>
+        <p>终端里滚动着成对的数字与字母 A–F。它们代表 ASCII 字节。</p>
+        <div class="cipher-block" id="c1">4b4559</div>
+        <div class="row">
+          <div>
+            <label for="a1">口令（还原后的单词）</label>
+            <input type="text" id="a1" autocomplete="off" spellcheck="false" disabled />
+          </div>
+          <button type="button" class="btn-primary" data-submit="1" disabled>解锁</button>
+        </div>
+        <p class="msg" id="m1"></p>
+        <details class="hint">
+          <summary>提示</summary>
+          <p>每两个十六进制字符对应一个字节。查 ASCII 表，或写一小段程序把 hex 转成字符串。</p>
+        </details>
+      </div>
+
+      <div class="card locked" data-room="2">
+        <p class="lock-note">🔒 请先解开上一题</p>
+        <h2>第一关 ③ <span class="badge">摩斯电码</span></h2>
+        <p>扬声器里只有长音与短音。墙上刻着点划对照表已经磨损，但规律不变。</p>
+        <div class="cipher-block" id="c2">... --- ...</div>
+        <div class="row">
+          <div>
+            <label for="a2">口令（标准呼号，三个字母）</label>
+            <input type="text" id="a2" autocomplete="off" spellcheck="false" disabled />
+          </div>
+          <button type="button" class="btn-primary" data-submit="2" disabled>解锁</button>
+        </div>
+        <p class="msg" id="m2"></p>
+        <details class="hint">
+          <summary>提示</summary>
+          <p><strong>·</strong> 短，<strong>—</strong> 长。三个字母，国际通用求救信号。</p>
+        </details>
+      </div>
+
+      <div class="card locked" data-room="3">
+        <p class="lock-note">🔒 请先解开上一题</p>
+        <h2>第一关 ④ <span class="badge">Base64</span></h2>
+        <p>这扇门只认「解码后的明文」。密文经过 Base64 包装。</p>
+        <div class="cipher-block" id="c3">b3Blbg==</div>
+        <div class="row">
+          <div>
+            <label for="a3">口令（还原后的单词）</label>
+            <input type="text" id="a3" autocomplete="off" spellcheck="false" disabled />
+          </div>
+          <button type="button" class="btn-primary" data-submit="3" disabled>解锁</button>
+        </div>
+        <p class="msg" id="m3"></p>
+        <details class="hint">
+          <summary>提示</summary>
+          <p>在浏览器控制台输入 <code style="color: var(--accent)">atob("密文")</code> 可快速解码（注意是标准 Base64）。</p>
+        </details>
+      </div>
+
+      <div class="card locked gate" data-room="4">
+        <p class="lock-note">🔒 请先完成第一关全部四题</p>
+        <h2>第一关 · 关底闸门 <span class="badge">通行串</span></h2>
+        <p>将本关四题得到的英文口令按 ①→④ 顺序<strong>小写、无空格</strong>拼接，验证后进入第二关。</p>
+        <div class="cipher-block" id="c4" style="color: var(--muted); font-size: 0.85rem;">第一关 · 四词合一</div>
+        <div class="row">
+          <div>
+            <label for="a4">第一关通行串</label>
+            <input type="text" id="a4" autocomplete="off" spellcheck="false" disabled />
+          </div>
+          <button type="button" class="btn-primary" data-submit="4" disabled>进入第二关</button>
+        </div>
+        <p class="msg" id="m4"></p>
+        <details class="hint">
+          <summary>提示</summary>
+          <p>若四题答案依次为 A、B、C、D，则输入 <strong>abcd</strong>。</p>
+        </details>
+      </div>
+
+      <div class="stage-banner">
+        <h2>第二关 · 比特与古典变体</h2>
+        <p>二进制、凯撒移位、Atbash、URL 百分号编码。</p>
+      </div>
+
+      <div class="card locked" data-room="5">
+        <p class="lock-note">🔒 请先完成第一关关底闸门</p>
+        <h2>第二关 ① <span class="badge">二进制</span></h2>
+        <p>老旧的比特流显示器：每 8 位是一字节，对应 ASCII 字符。</p>
+        <div class="cipher-block" id="c5">01000010 01001001 01010100</div>
+        <div class="row">
+          <div>
+            <label for="a5">口令（还原后的单词）</label>
+            <input type="text" id="a5" autocomplete="off" spellcheck="false" disabled />
+          </div>
+          <button type="button" class="btn-primary" data-submit="5" disabled>解锁</button>
+        </div>
+        <p class="msg" id="m5"></p>
+        <details class="hint">
+          <summary>提示</summary>
+          <p>先把每组二进制转成十进制（或十六进制），再查 ASCII。三个字节 → 三个字母。</p>
+        </details>
+      </div>
+
+      <div class="card locked" data-room="6">
+        <p class="lock-note">🔒 请先解开上一题</p>
+        <h2>第二关 ② <span class="badge">凯撒密码</span></h2>
+        <p>铭牌写着：「字母表循环移位，<strong>加密时每位向后移 5</strong>」。把密文移回去即可。</p>
+        <div class="cipher-block" id="c6">MJQQT</div>
+        <div class="row">
+          <div>
+            <label for="a6">口令（还原后的单词）</label>
+            <input type="text" id="a6" autocomplete="off" spellcheck="false" disabled />
+          </div>
+          <button type="button" class="btn-primary" data-submit="6" disabled>解锁</button>
+        </div>
+        <p class="msg" id="m6"></p>
+        <details class="hint">
+          <summary>提示</summary>
+          <p>解密：每个字母在字母表中<strong>向前</strong>移动 5 位（A 的上一位是 Z）。</p>
+        </details>
+      </div>
+
+      <div class="card locked" data-room="7">
+        <p class="lock-note">🔒 请先解开上一题</p>
+        <h2>第二关 ③ <span class="badge">Atbash</span></h2>
+        <p>对称密码：A↔Z，B↔Y，C↔X……从两头向中间对折互换。</p>
+        <div class="cipher-block" id="c7">TZGV</div>
+        <div class="row">
+          <div>
+            <label for="a7">口令（还原后的单词）</label>
+            <input type="text" id="a7" autocomplete="off" spellcheck="false" disabled />
+          </div>
+          <button type="button" class="btn-primary" data-submit="7" disabled>解锁</button>
+        </div>
+        <p class="msg" id="m7"></p>
+        <details class="hint">
+          <summary>提示</summary>
+          <p>对密文再做一次同样的 A↔Z 映射，即得到明文（Atbash 是对合运算）。</p>
+        </details>
+      </div>
+
+      <div class="card locked" data-room="8">
+        <p class="lock-note">🔒 请先解开上一题</p>
+        <h2>第二关 ④ <span class="badge">URL 编码</span></h2>
+        <p>日志里是一串百分号与两位十六进制——常见于网址与表单转义。</p>
+        <div class="cipher-block" id="c8">%53%41%46%45</div>
+        <div class="row">
+          <div>
+            <label for="a8">口令（还原后的单词）</label>
+            <input type="text" id="a8" autocomplete="off" spellcheck="false" disabled />
+          </div>
+          <button type="button" class="btn-primary" data-submit="8" disabled>解锁</button>
+        </div>
+        <p class="msg" id="m8"></p>
+        <details class="hint">
+          <summary>提示</summary>
+          <p>每个 <code style="color: var(--accent)">%XX</code> 是一个字节的十六进制。转成 ASCII 字符后连读。</p>
+        </details>
+      </div>
+
+      <div class="card locked gate" data-room="9">
+        <p class="lock-note">🔒 请先完成第二关全部四题</p>
+        <h2>第二关 · 关底闸门 <span class="badge">通行串</span></h2>
+        <p>将第二关四题英文口令按 ①→④ 顺序<strong>小写、无空格</strong>拼接。</p>
+        <div class="cipher-block" id="c9" style="color: var(--muted); font-size: 0.85rem;">第二关 · 四词合一</div>
+        <div class="row">
+          <div>
+            <label for="a9">第二关通行串</label>
+            <input type="text" id="a9" autocomplete="off" spellcheck="false" disabled />
+          </div>
+          <button type="button" class="btn-primary" data-submit="9" disabled>进入第三关</button>
+        </div>
+        <p class="msg" id="m9"></p>
+        <details class="hint">
+          <summary>提示</summary>
+          <p>与第一关关底规则相同，只是使用第二关四个答案。</p>
+        </details>
+      </div>
+
+      <div class="stage-banner">
+        <h2>第三关 · 数字与方阵</h2>
+        <p>A1Z26、反序、十进制 ASCII、波利比奥斯方格。通过关底即逃脱成功。</p>
+      </div>
+
+      <div class="card locked" data-room="10">
+        <p class="lock-note">🔒 请先完成第二关关底闸门</p>
+        <h2>第三关 ① <span class="badge">A1Z26</span></h2>
+        <p>墙上用连字符写着一串数字——在字母表里的位置？A=1，B=2，……</p>
+        <div class="cipher-block" id="c10">23-9-14</div>
+        <div class="row">
+          <div>
+            <label for="a10">口令（还原后的单词）</label>
+            <input type="text" id="a10" autocomplete="off" spellcheck="false" disabled />
+          </div>
+          <button type="button" class="btn-primary" data-submit="10" disabled>解锁</button>
+        </div>
+        <p class="msg" id="m10"></p>
+        <details class="hint">
+          <summary>提示</summary>
+          <p>每个数字对应一个字母，从左到右连读成一个英文单词。</p>
+        </details>
+      </div>
+
+      <div class="card locked" data-room="11">
+        <p class="lock-note">🔒 请先解开上一题</p>
+        <h2>第三关 ② <span class="badge">反序</span></h2>
+        <p>系统把字母顺序整个颠倒了——从右往左读试试。</p>
+        <div class="cipher-block" id="c11">REPAP</div>
+        <div class="row">
+          <div>
+            <label for="a11">口令（还原后的单词）</label>
+            <input type="text" id="a11" autocomplete="off" spellcheck="false" disabled />
+          </div>
+          <button type="button" class="btn-primary" data-submit="11" disabled>解锁</button>
+        </div>
+        <p class="msg" id="m11"></p>
+        <details class="hint">
+          <summary>提示</summary>
+          <p>把密文字符串整体反转即得明文。</p>
+        </details>
+      </div>
+
+      <div class="card locked" data-room="12">
+        <p class="lock-note">🔒 请先解开上一题</p>
+        <h2>第三关 ③ <span class="badge">ASCII 十进制</span></h2>
+        <p>监视器只打印十进制字节值，中间用空格分隔。</p>
+        <div class="cipher-block" id="c12">66 89 84 69</div>
+        <div class="row">
+          <div>
+            <label for="a12">口令（还原后的单词）</label>
+            <input type="text" id="a12" autocomplete="off" spellcheck="false" disabled />
+          </div>
+          <button type="button" class="btn-primary" data-submit="12" disabled>解锁</button>
+        </div>
+        <p class="msg" id="m12"></p>
+        <details class="hint">
+          <summary>提示</summary>
+          <p>每个数转成对应 ASCII 字符（可查表），再拼成单词。</p>
+        </details>
+      </div>
+
+      <div class="card locked" data-room="13">
+        <p class="lock-note">🔒 请先解开上一题</p>
+        <h2>第三关 ④ <span class="badge">Polybius 方格</span></h2>
+        <p>经典 5×5 方阵：行号与列号各为 1–5，I 与 J 共用一格。</p>
+        <div class="cipher-block" id="c13">31 34 13 25</div>
+        <div class="row">
+          <div>
+            <label for="a13">口令（还原后的单词）</label>
+            <input type="text" id="a13" autocomplete="off" spellcheck="false" disabled />
+          </div>
+          <button type="button" class="btn-primary" data-submit="13" disabled>解锁</button>
+        </div>
+        <p class="msg" id="m13"></p>
+        <details class="hint">
+          <summary>提示</summary>
+          <p>第一行 ABCDE 对应列 1–5，第二行 FGHIK……每组两位数：十位=行，个位=列。</p>
+        </details>
+      </div>
+
+      <div class="card locked gate" data-room="14">
+        <p class="lock-note">🔒 请先完成第三关全部四题</p>
+        <h2>第三关 · 最终出口 <span class="badge">通行串</span></h2>
+        <p>将第三关四题英文口令按 ①→④ 顺序<strong>小写、无空格</strong>拼接——正确即离开密室。</p>
+        <div class="cipher-block" id="c14" style="color: var(--muted); font-size: 0.85rem;">第三关 · 四词合一 → 出口</div>
+        <div class="row">
+          <div>
+            <label for="a14">第三关通行串</label>
+            <input type="text" id="a14" autocomplete="off" spellcheck="false" disabled />
+          </div>
+          <button type="button" class="btn-primary" data-submit="14" disabled>离开密室</button>
+        </div>
+        <p class="msg" id="m14"></p>
+        <details class="hint">
+          <summary>提示</summary>
+          <p>与前两关关底规则相同；这是最后一道验证。</p>
+        </details>
+      </div>
+    </section>
+
+    <section id="victory" class="card">
+      <h2>逃脱成功</h2>
+      <p style="color: var(--muted); margin: 0 0 1rem;">
+        三关关底全部通过：从入门编码到数字与方阵，你已走出这座分层加密的安全屋。记录已清除——欢迎回到明文世界。
+      </p>
+      <button type="button" class="btn-ghost" id="replayBtn">再玩一次</button>
+    </section>
+
+    <footer>Cipher Lab · 本地游玩，无联网提交</footer>
+  </div>
+
+  <script>
+    (function () {
+      const STEPS = [
+        { kind: "puzzle", answer: "code" },
+        { kind: "puzzle", answer: "key" },
+        { kind: "puzzle", answer: "sos" },
+        { kind: "puzzle", answer: "open" },
+        { kind: "gate", expected: "codekeysosopen", stage: 1 },
+        { kind: "puzzle", answer: "bit" },
+        { kind: "puzzle", answer: "hello" },
+        { kind: "puzzle", answer: "gate" },
+        { kind: "puzzle", answer: "safe" },
+        { kind: "gate", expected: "bithellogatesafe", stage: 2 },
+        { kind: "puzzle", answer: "win" },
+        { kind: "puzzle", answer: "paper" },
+        { kind: "puzzle", answer: "byte" },
+        { kind: "puzzle", answer: "lock" },
+        { kind: "gate", expected: "winpaperbytelock", stage: 3, final: true },
+      ];
+
+      const LAST_INDEX = STEPS.length - 1;
+
+      const keys = [];
+      for (let i = 0; i <= LAST_INDEX; i++) keys.push("a" + i);
+
+      const intro = document.getElementById("intro");
+      const game = document.getElementById("game");
+      const victory = document.getElementById("victory");
+      const startBtn = document.getElementById("startBtn");
+      const replayBtn = document.getElementById("replayBtn");
+
+      let solved = [];
+
+      function norm(s) {
+        return String(s || "")
+          .trim()
+          .toLowerCase()
+          .replace(/\s+/g, "");
+      }
+
+      function unlockRoom(index) {
+        solved[index] = true;
+        const card = document.querySelector('[data-room="' + index + '"]');
+        if (card) card.classList.remove("locked");
+
+        const next = index + 1;
+        if (next <= LAST_INDEX) {
+          const nextCard = document.querySelector('[data-room="' + next + '"]');
+          if (nextCard) {
+            nextCard.classList.remove("locked");
+            const note = nextCard.querySelector(".lock-note");
+            if (note) note.remove();
+          }
+          const inp = document.getElementById(keys[next]);
+          const btn = document.querySelector('[data-submit="' + next + '"]');
+          if (inp) {
+            inp.disabled = false;
+            inp.focus();
+          }
+          if (btn) btn.disabled = false;
+        }
+      }
+
+      function showMsg(i, text, ok) {
+        const el = document.getElementById("m" + i);
+        if (!el) return;
+        el.textContent = text;
+        el.className = "msg " + (ok ? "ok" : "err");
+      }
+
+      function gateFailLabel(stage) {
+        if (stage === 1) return "第一关";
+        if (stage === 2) return "第二关";
+        return "第三关";
+      }
+
+      function check(i) {
+        const step = STEPS[i];
+        const input = document.getElementById(keys[i]);
+        const val = norm(input && input.value);
+
+        if (step.kind === "puzzle") {
+          if (val === step.answer) {
+            showMsg(i, "门锁绿灯亮起。通过。", true);
+            unlockRoom(i);
+            const sub = document.querySelector('[data-submit="' + i + '"]');
+            if (input) input.disabled = true;
+            if (sub) sub.disabled = true;
+          } else {
+            showMsg(i, "认证失败。再检查编码方式与大小写（口令均为英文单词）。", false);
+          }
+          return;
+        }
+
+        if (step.kind === "gate") {
+          if (val === step.expected) {
+            showMsg(i, step.final ? "最终出口开启。" : "关底验证通过。", true);
+            unlockRoom(i);
+            const sub = document.querySelector('[data-submit="' + i + '"]');
+            if (input) input.disabled = true;
+            if (sub) sub.disabled = true;
+            if (step.final) {
+              game.classList.add("hidden");
+              victory.classList.add("visible");
+            }
+          } else {
+            showMsg(
+              i,
+              gateFailLabel(step.stage) +
+                "通行串不正确。将本关四题英文口令按 ①→④ 顺序小写无缝拼接。",
+              false
+            );
+          }
+        }
+      }
+
+      function lockNoteForRoom(i) {
+        if (i === 0) return null;
+        if (i >= 1 && i <= 3) return "🔒 请先解开上一题";
+        if (i === 4) return "🔒 请先完成第一关全部四题";
+        if (i === 5) return "🔒 请先完成第一关关底闸门";
+        if (i >= 6 && i <= 8) return "🔒 请先解开上一题";
+        if (i === 9) return "🔒 请先完成第二关全部四题";
+        if (i === 10) return "🔒 请先完成第二关关底闸门";
+        if (i >= 11 && i <= 13) return "🔒 请先解开上一题";
+        if (i === 14) return "🔒 请先完成第三关全部四题";
+        return "🔒 请先解开上一题";
+      }
+
+      function reset() {
+        solved = [];
+        victory.classList.remove("visible");
+        game.classList.remove("hidden");
+
+        for (let i = 0; i <= LAST_INDEX; i++) {
+          const card = document.querySelector('[data-room="' + i + '"]');
+          const inp = document.getElementById(keys[i]);
+          const btn = document.querySelector('[data-submit="' + i + '"]');
+          const msg = document.getElementById("m" + i);
+
+          if (inp) {
+            inp.value = "";
+            inp.disabled = i !== 0;
+          }
+          if (btn) btn.disabled = i !== 0;
+          if (msg) {
+            msg.textContent = "";
+            msg.className = "msg";
+          }
+
+          if (card) {
+            const existing = card.querySelector(".lock-note");
+            if (existing) existing.remove();
+            if (i > 0) {
+              card.classList.add("locked");
+              const noteText = lockNoteForRoom(i);
+              if (noteText) {
+                const p = document.createElement("p");
+                p.className = "lock-note";
+                p.textContent = noteText;
+                card.insertBefore(p, card.firstChild);
+              }
+            } else {
+              card.classList.remove("locked");
+            }
+          }
+        }
+
+        const firstNote = document.querySelector('[data-room="0"] .lock-note');
+        if (firstNote) firstNote.remove();
+
+        document.getElementById("a0").focus();
+      }
+
+      startBtn.addEventListener("click", function () {
+        intro.style.display = "none";
+        game.classList.remove("hidden");
+        document.getElementById("a0").focus();
+      });
+
+      replayBtn.addEventListener("click", function () {
+        reset();
+      });
+
+      document.querySelectorAll("[data-submit]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          check(parseInt(btn.getAttribute("data-submit"), 10));
+        });
+      });
+
+      keys.forEach(function (id, i) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") check(i);
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
